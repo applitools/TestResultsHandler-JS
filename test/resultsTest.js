@@ -13,7 +13,7 @@ describe('Simple Test', function() {
     beforeEach(async function() {
         eyes = new Eyes();
         eyes.setLogHandler(new ConsoleLogHandler(true));
-        eyes.setApiKey("MGcko78W47lkV6nUEzVQm9RnOR2Efw2lv34gAj0aesc110");
+        eyes.setApiKey("APPLITOOLS_API_KEY");
         driver = await new Builder().forBrowser('chrome').build();
     });
 
@@ -23,7 +23,7 @@ describe('Simple Test', function() {
 
     it('Results Handler test', async function() {
 
-        var applitoolsViewKey = 'MGcko78W47lkV6nUEzVQm9RnOR2Efw2lv34gAj0aesc110'
+        var applitoolsViewKey = 'APPLITOOLS_VIEW_KEY'
         let downloadPath = process.cwd()+'/downloadImages'
         var downloadDir = downloadPath
 
