@@ -2,10 +2,10 @@
   "name": "ApplitoolsTestResultsHandler-Javascript",
   "version": "v2.0.0",
   "dependencies": {
-    "@applitools/eyes-selenium": "^4.33.3",
+    "@applitools/eyes-selenium": "^4.33.29",
     "assert": "^2.0.0",
     "axios": "^0.19.0",
-    "chromedriver": "^79.0.0",
+    "chromedriver": "^80.0.0",
     "dateformat": "^3.0.3",
     "fs": "0.0.1-security",
     "https": "^1.0.0",

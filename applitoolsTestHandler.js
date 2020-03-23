@@ -42,7 +42,7 @@ const HTTP_STATUS_CODES = {
 
 class ApplitoolsTestResultHandler {
     constructor(testResult, viewKey, proxyServerUrl, proxyServerPort, proxyServerUsername, proxyServerPassword, isHttpOnly) {
-        this.testResult = testResult;
+        this.testResult = testResult._testResults;
         this.viewKey = viewKey;
         this.testName = this.testName();
         this.appName = this.appName();
@@ -105,8 +105,9 @@ class ApplitoolsTestResultHandler {
     }
 
     viewportSize() {
-        const width = this.testValues()._hostDisplaySize._width;
-        const height = this.testValues()._hostDisplaySize._height;
+        const size = this.testValues()._hostDisplaySize;
+        const width = size._width;
+        const height = size._height;
         return `${width}x${height}`;
     }
 
@@ -437,6 +438,19 @@ class ApplitoolsTestResultHandler {
       }
 
       createHttpOptions(requestOptions) {
+        let options = requestOptions
+        options.responseType = 'arraybuffer'
+        options.headers = {}
+        options.params = {}
+        options.params.apiKey = this.viewKey
+        if (this.proxy != null) {
+          this.setProxyOptions({options})
+        }
+        options.maxContentLength = 20 * 1024 * 1024
+        return options
+      }
+
+      createHttpOptionsWithHeaders(requestOptions) {
         let options = requestOptions
         options.responseType = 'arraybuffer'
         options.headers = {}
