@@ -1,8 +1,8 @@
-# ApplitoolsTestResultsHandler - Javascript
-### v2.0.1
+# ApplitoolsTestResultsHandler - Javascript/TypeScript
+### v2.0.2
 
 The Applitools Test Results Handler extends the capabilities of TestResults with additional API calls.
-With these additional API calls you will be able to retrive additional details at the end of the test.
+With these additional API calls you will be able to retrieve additional details at the end of the test.
 
 Note: The Test Results Handler requires your account View Key - which can be found in the admin panel. Contact Applitools support at support@applitools.com if you need further assistance retrieving it.
 
@@ -19,9 +19,21 @@ Note: The Test Results Handler requires your account View Key - which can be fou
 ### How to use the tool:
 
 ##### To initialize the Handler:
+
+######Without Runner
+
 ```javascript
 let results = await eyes.close(false);
 const handler= new ApplitoolsTestResultHandler(results, applitoolsViewKey);
+```
+
+######With Runner
+```javascript
+const allTestResults = await runner.getAllTestResults(false);
+
+for (result of allTestResults) {
+  const handler = new ApplitoolsTestResultHandler(result.getTestResults(), applitoolsViewKey);
+}
 ```
 
 ##### **downloadDiffs** -  Downloading the test images with the highlighted detected differences to a given directory. In case of New, Missing or passed step no image will be downloaded.
@@ -41,6 +53,6 @@ handler.downloadImages(downloadDir, 'current');
 
 # Further regarding:
 
-Getting Diff Images Manually - http://support.applitools.com/customer/portal/articles/2457891 
+Getting Diff Images Manually - http://support.applitools.com/customer/portal/articles/2457891
 Getting Current/Baseline Images Manually - http://support.applitools.com/customer/portal/articles/2917372
 Extend API features with EyesUtilities - http://support.applitools.com/customer/portal/articles/2913152
