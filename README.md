@@ -18,16 +18,16 @@ Note: The Test Results Handler requires your account View Key - which can be fou
 
 ### How to use the tool:
 
-##### To initialize the Handler:
+#### To initialize the Handler:
 
-######Without Runner
+###### Without Runner
 
 ```javascript
 let results = await eyes.close(false);
 const handler= new ApplitoolsTestResultHandler(results, applitoolsViewKey);
 ```
 
-######With Runner
+###### With Runner
 ```javascript
 const allTestResults = await runner.getAllTestResults(false);
 
