@@ -33,6 +33,8 @@ const allTestResults = await runner.getAllTestResults(false);
 
 for (result of allTestResults) {
   const handler = new ApplitoolsTestResultHandler(result.getTestResults(), applitoolsViewKey);
+
+  await handler.downloadImages(downloadDir, 'diff'); // Example
 }
 ```
 
