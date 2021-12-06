@@ -1,3 +1,5 @@
+export {};
+
 const {promisify} = require('util')
 const fs = require('fs');
 const fetch = require('node-fetch');
@@ -5,45 +7,53 @@ const axios = require('axios')
 const tunnel = require('tunnel')
 const dateFormat = require('dateformat')
 
-
-const RETRYREQUESTINTERVAL = 500 // ms
-const LONGREQUESTDELAYMS = 2000 // ms
-const MAXLONGREQUESTDELAYMS = 10000 // ms
-const DEFAULTTIMEOUTMS = 300000 // ms (5 min)
-const REDUCEDTIMEOUTMS = 15000 // ms (15 sec)
-const LONGREQUESTDELAYMULTIPLICATIVEINCREASEFACTOR = 1.5
-const DATEFORMATRFC1123 = "ddd, dd mmm yyyy HH:MM:ss 'GMT'"
+const RETRY_REQUEST_INTERVAL = 500 // ms
+const LONG_REQUEST_DELAY_MS = 2000 // ms
+const MAX_LONG_REQUEST_DELAY_MS = 10000 // ms
+const DEFAULT_TIMEOUT_MS = 300000 // ms (5 min)
+const REDUCED_TIMEOUT_MS = 15000 // ms (15 sec)
+const LONG_REQUEST_DELAY_MULTIPLICATIVE_INCREASE_FACTOR = 1.5
+const DATE_FORMAT_RFC1123 = "ddd, dd mmm yyyy HH:MM:ss 'GMT'"
 let counter = 0
 
 
-const HTTPSTATUSCODES = {
+const HTTP_STATUS_CODES = {
     CREATED: 201,
     ACCEPTED: 202,
     OK: 200,
     GONE: 410,
-    NOTFOUND: 404,
-    INTERNALSERVERERROR: 500,
-    BADGATEWAY: 502,
-    GATEWAYTIMEOUT: 504,
+    NOT_FOUND: 404,
+    INTERNAL_SERVER_ERROR: 500,
+    BAD_GATEWAY: 502,
+    GATEWAY_TIMEOUT: 504,
   }
 
-  const HTTPFAILEDCODES = [
-    HTTPSTATUSCODES.NOTFOUND,
-    HTTPSTATUSCODES.INTERNALSERVERERROR,
-    HTTPSTATUSCODES.BADGATEWAY,
-    HTTPSTATUSCODES.GATEWAYTIMEOUT,
+  const HTTP_FAILED_CODES = [
+    HTTP_STATUS_CODES.NOT_FOUND,
+    HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR,
+    HTTP_STATUS_CODES.BAD_GATEWAY,
+    HTTP_STATUS_CODES.GATEWAY_TIMEOUT,
   ]
 
-  const REQUESTFAILEDCODES = ['ECONNRESET', 'ECONNABORTED', 'ETIMEDOUT', 'ENOTFOUND', 'EAIAGAIN']
+  const REQUEST_FAILED_CODES = ['ECONNRESET', 'ECONNABORTED', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN']
 
-  const DEFAULTHEADERS = {
+  const DEFAULT_HEADERS = {
     Accept: 'application/json',
     'Content-Type': 'application/json',
   }
 
-
-
 class ApplitoolsTestResultHandler {
+	public testResult: any;
+	public viewKey: any;
+	public hostOS: any;
+	public hostApp: any;
+	public testURL: any;
+	public serverURL: any;
+	public batchId: any;
+	public sessionId: any;
+	public proxy: any;
+	public httpOptions: any;
+
     constructor(testResult, viewKey, proxyServerUrl, proxyServerPort, proxyServerUsername, proxyServerPassword, isHttpOnly) {
         this.testResult = testResult;
         this.viewKey = viewKey;
@@ -62,8 +72,8 @@ class ApplitoolsTestResultHandler {
         }
         this.httpOptions = {
             proxy: undefined,
-            headers: DEFAULTHEADERS,
-            timeout: DEFAULTTIMEOUTMS,
+            headers: DEFAULT_HEADERS,
+            timeout: DEFAULT_TIMEOUT_MS,
             responseType: 'json',
             params: {},
           }
@@ -95,7 +105,7 @@ class ApplitoolsTestResultHandler {
     ///Private Methods
 
     testValues() {
-        return this.testResult;
+       return this.testResult;
     }
 
     testName() {
@@ -106,7 +116,7 @@ class ApplitoolsTestResultHandler {
         return this.testValues().getAppName();
     }
 
-    viewportSize() {
+    viewportSize() : any {
         const size = this.testValues().getHostDisplaySize();
         const width = size.getWidth();
         const height = size.getHeight();
@@ -138,18 +148,19 @@ class ApplitoolsTestResultHandler {
     }
 
     setProxy(uri, proxyServerPort, proxyUsername, proxyPassword, isHttpOnly = false){
-        const proxy = {}
+        const proxy:any = {}
         let url = new URL(uri.includes('://') ? uri : `http://${uri}:${proxyServerPort}`)
         proxy.protocol = url.protocol
         proxy.host = url.hostname
         proxy.port = url.port
         proxy.isHttpOnly = !!isHttpOnly
-        if (!username && url.username) {
+        
+        if (url.username) {
             proxy.auth = {
               username: url.username,
               password: url.password,
             }
-          } else if (username) {
+          } else  {
             proxy.auth = {
               username: proxyUsername,
               password: proxyPassword,
@@ -175,10 +186,10 @@ class ApplitoolsTestResultHandler {
         const stepResults = new Array;
         let status = new String;
 
-        for (let i = 0; i < this.steps; ++i) {
-            const isDifferent = this.getStepInfo(i).isDifferent;
-            const hasBaselineImage = this.getStepInfo(i).hasBaselineImage;
-            const hasCurrentImage = this.getStepInfo(i).hasCurrentImage;
+        for (let i = 0; i < Number(this.steps); ++i) {
+            const isDifferent = this.getStepInfo(i).getIsDifferent();
+            const hasBaselineImage = this.getStepInfo(i).getHasBaselineImage();
+            const hasCurrentImage = this.getStepInfo(i).getHasCurrentImage();
 
             const bools = [ isDifferent, hasBaselineImage, hasCurrentImage ];
 
@@ -202,11 +213,12 @@ class ApplitoolsTestResultHandler {
             if (this.isTrue(isUnresolved, bools)) {
                 status = "UNRESOLVED"
             }
+
             const obj = await this.getSessionDetailsJson()
             const stepInfo = {
                 step: i + 1,
                 status,
-                name: this.getStepInfo(i).name,
+                name: this.getStepInfo(i).getName(),
                 baselineImageURL: this.getImageUrlByStatus(obj,'baseline'),
                 currentImageURL: this.getImageUrlByStatus(obj, 'current'),
                 diffImageURL: this.getDiffUrl(status, i + 1)
@@ -216,16 +228,15 @@ class ApplitoolsTestResultHandler {
         return stepResults;
     }
 
- 
 
     async getSessionDetailsJson(){
-      const URL = `${this.serverURL}/api/sessions/batches/${this.batchId}/${this.sessionId}/?ApiKey=${this.viewKey}`;
-      return await fetch(URL)
-          .then(res => res.json())
-  }
+        const URL = `${this.serverURL}/api/sessions/batches/${this.batchId}/${this.sessionId}/?ApiKey=${this.viewKey}`;
+        return await fetch(URL)
+            .then(res => res.json())
+    }
 
     getSpecificImageUrl(imageId) {
-        return `${this.serverURL}/api/images/${imageId}/`;
+        return `${this.serverURL}/api/images/${imageId}`;
     }
 
     getSpecificDiffImageUrl(step) {
@@ -280,8 +291,7 @@ class ApplitoolsTestResultHandler {
 
     async directoryCreator(path) {
         const dirStructure = [this.testName,this.appName,this.viewportSize,
-            this.hostOS,this.hostApp,this.batchId,this.sessionId];
-
+            this.hostOS,this.hostApp,this.batchId,this.sessionId];        
         const currentDir = await process.cwd();
         await process.chdir(path);
         await dirStructure.forEach(dir => {
@@ -378,13 +388,13 @@ class ApplitoolsTestResultHandler {
       
           if (
             retry > 0 &&
-            ((err.response && HTTPFAILEDCODES.includes(err.response.status)) ||
-              REQUESTFAILEDCODES.includes(err.code))
+            ((err.response && HTTP_FAILED_CODES.includes(err.response.status)) ||
+              REQUEST_FAILED_CODES.includes(err.code))
           ) {
             console.log(`ServerConnector retrying request with delay ${delayBeforeRetry}...`)
       
             if (delayBeforeRetry) {
-                await new Promise(r => setTimeout(r, RETRYREQUESTINTERVAL))
+                await new Promise(r => setTimeout(r, RETRY_REQUEST_INTERVAL))
               return this.sendRequest(options, retry - 1, delayBeforeRetry)
             }
       
@@ -397,25 +407,25 @@ class ApplitoolsTestResultHandler {
 
     async longRequestCheckStatus(response) {
         switch (response.status) {
-          case HTTPSTATUSCODES.OK: {
+          case HTTP_STATUS_CODES.OK: {
             return response
           }
-          case HTTPSTATUSCODES.ACCEPTED: {
+          case HTTP_STATUS_CODES.ACCEPTED: {
             const options = this.createHttpOptions({
               method: 'GET',
               url: response.headers.location,
             })
-            const requestResponse = await this.longRequestLoop(options, LONGREQUESTDELAYMS)
+            const requestResponse = await this.longRequestLoop(options, LONG_REQUEST_DELAY_MS)
             return this.longRequestCheckStatus(requestResponse)
           }
-          case HTTPSTATUSCODES.CREATED: {
+          case HTTP_STATUS_CODES.CREATED: {
             const options = this.createHttpOptions({
               method: 'DELETE',
               url: response.headers.location,
             })
             return this.sendRequest(options)
           }
-          case HTTPSTATUSCODES.GONE: {
+          case HTTP_STATUS_CODES.GONE: {
             throw new Error('The server task has gone.')
           }
           default: {
@@ -426,17 +436,17 @@ class ApplitoolsTestResultHandler {
 
       async longRequestLoop(options, delay) {
         delay = Math.min(
-          MAXLONGREQUESTDELAYMS,
-          Math.floor(delay * LONGREQUESTDELAYMULTIPLICATIVEINCREASEFACTOR),
+          MAX_LONG_REQUEST_DELAY_MS,
+          Math.floor(delay * LONG_REQUEST_DELAY_MULTIPLICATIVE_INCREASE_FACTOR),
         )
         console.log(`Still running... Retrying in ${delay} ms`)
       
         await new Promise(r => setTimeout(r, delay))
         const response = await this.sendRequest(options)
-        if (response.status !== HTTPSTATUSCODES.OK) {
+        if (response.status !== HTTP_STATUS_CODES.OK) {
           return response
         }
-        return longRequestLoop(options, delay)
+        return this.longRequestLoop(options, delay)
       }
 
       createHttpOptions(requestOptions) {
@@ -444,7 +454,7 @@ class ApplitoolsTestResultHandler {
         options.responseType = 'arraybuffer'
         options.headers = {}
         options.params = {}
-        options.params.ApiKey = this.viewKey
+        options.params.apiKey = this.viewKey
         if (this.proxy != null) {
           this.setProxyOptions({options})
         }
@@ -457,7 +467,7 @@ class ApplitoolsTestResultHandler {
         options.responseType = 'arraybuffer'
         options.headers = {}
         options.headers['Eyes-Expect'] = '202+location' 
-        options.headers['Eyes-Date'] = dateFormat(new Date(), DATEFORMATRFC1123, true) 
+        options.headers['Eyes-Date'] = dateFormat(new Date(), DATE_FORMAT_RFC1123, true) 
        
         options.params = {}
         options.params.apiKey = this.viewKey
@@ -469,7 +479,7 @@ class ApplitoolsTestResultHandler {
       }
 
       setProxyOptions(options){
-        if (!proxy.getIsHttpOnly()) {
+        if (!this.proxy.getIsHttpOnly()) {
             options.proxy = this.proxy
             console.log('using proxy', options.proxy.host, options.proxy.port)
             return
